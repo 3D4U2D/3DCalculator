@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D4U · Print-kalibratie</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232d; --line:#2b3440;
+  --line2:#3a4552; --txt:#e6edf3; --dim:#8b98a5; --dim2:#5c6773;
+  --accent:#3fb950; --accent2:#2ea043; --amber:#e3b341; --blue:#58a6ff;
+  --red:#f85149; --mono:'SF Mono',ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,monospace;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--txt);font-family:var(--sans);
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;min-height:100vh;
+}
+::selection{background:var(--accent);color:#0d1117}
+button{font-family:inherit;cursor:pointer;color:inherit}
+input,select{font-family:inherit;color:inherit}
+a{color:var(--blue)}
+
+/* ---- Header ---- */
+header{
+  border-bottom:1px solid var(--line);background:var(--panel);
+  padding:14px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.logo{font-weight:700;font-size:16px;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+.logo .mark{
+  width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:grid;place-items:center;color:#0d1117;font-family:var(--mono);font-weight:800;font-size:13px;
+}
+.logo .sub{color:var(--dim);font-weight:400;font-size:12px;font-family:var(--mono);
+  border-left:1px solid var(--line2);padding-left:12px;margin-left:2px}
+header .grow{flex:1}
+.hstat{font-family:var(--mono);font-size:12px;color:var(--dim);display:flex;gap:6px;align-items:baseline}
+.hstat b{color:var(--txt);font-weight:600}
+
+/* ---- Tabs ---- */
+nav.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);background:var(--panel);padding:0 18px}
+nav.tabs button{
+  background:none;border:none;padding:11px 16px;color:var(--dim);font-size:13px;font-weight:500;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .12s;
+}
+nav.tabs button:hover{color:var(--txt)}
+nav.tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ---- Layout ---- */
+main{flex:1;display:flex;overflow:hidden}
+.view{display:none;flex:1;overflow:auto;padding:22px}
+.view.active{display:flex;gap:22px}
+@media(max-width:960px){.view.active{flex-direction:column}}
+
+/* ---- Panels ---- */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.panel-h{padding:12px 16px;border-bottom:1px solid var(--line);font-weight:600;font-size:13px;
+  display:flex;align-items:center;gap:8px;justify-content:space-between}
+.panel-h .eyebrow{font-family:var(--mono);font-size:10px;color:var(--dim2);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+.panel-b{padding:16px}
+
+/* ---- Dropzone ---- */
+.drop{
+  border:1.5px dashed var(--line2);border-radius:10px;padding:34px 20px;text-align:center;
+  transition:.15s;background:var(--panel2);cursor:pointer;
+}
+.drop:hover,.drop.over{border-color:var(--accent);background:#12251a}
+.drop .ico{font-size:30px;margin-bottom:8px;opacity:.65}
+.drop h3{font-size:14px;font-weight:600;margin-bottom:3px}
+.drop p{color:var(--dim);font-size:12px}
+.drop .fmts{font-family:var(--mono);font-size:11px;color:var(--dim2);margin-top:9px}
+
+/* ---- Model info readout ---- */
+.readout{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:14px}
+.readout .cell{background:var(--panel);padding:11px 13px}
+.readout .cell.full{grid-column:1/-1}
+.readout .k{font-family:var(--mono);font-size:10px;color:var(--dim2);text-transform:uppercase;letter-spacing:.08em}
+.readout .v{font-family:var(--mono);font-size:17px;font-weight:600;margin-top:2px}
+.readout .v small{font-size:11px;color:var(--dim);font-weight:400}
+
+/* ---- Form ---- */
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12px;color:var(--dim);margin-bottom:5px;font-weight:500}
+.field label .req{color:var(--amber)}
+.inp,select.inp{
+  width:100%;background:var(--panel2);border:1px solid var(--line2);border-radius:7px;
+  padding:9px 11px;font-size:13px;font-family:var(--mono);transition:.12s;
+}
+.inp:focus,select.inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(63,185,80,.13)}
+.inp::placeholder{color:var(--dim2)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.hint{font-size:11px;color:var(--dim2);margin-top:4px;font-family:var(--mono)}
+
+.btn{
+  background:var(--accent);color:#0d1117;border:none;border-radius:7px;padding:10px 16px;
+  font-weight:600;font-size:13px;transition:.12s;display:inline-flex;align-items:center;gap:7px;
+}
+.btn:hover{background:var(--accent2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;border:1px solid var(--line2);color:var(--txt)}
+.btn.ghost:hover{border-color:var(--dim);background:var(--panel2)}
+.btn.sm{padding:6px 11px;font-size:12px}
+.btn.danger{background:transparent;border:1px solid var(--line2);color:var(--red)}
+.btn.danger:hover{background:rgba(248,81,73,.1);border-color:var(--red)}
+
+/* ---- Table ---- */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:9px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{
+  background:var(--panel2);text-align:left;padding:9px 12px;font-weight:600;color:var(--dim);
+  font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line);
+  white-space:nowrap;position:sticky;top:0;cursor:pointer;user-select:none;
+}
+th:hover{color:var(--txt)}
+th .arr{opacity:.5;font-size:9px;margin-left:3px}
+td{padding:9px 12px;border-bottom:1px solid var(--line);font-family:var(--mono);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--panel2)}
+td.name{font-family:var(--sans);font-weight:500;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:10.5px;font-weight:600;
+  font-family:var(--mono);border:1px solid var(--line2)}
+.pill.mat{background:rgba(88,166,255,.1);color:var(--blue);border-color:rgba(88,166,255,.3)}
+.pill.lh{background:rgba(227,179,65,.1);color:var(--amber);border-color:rgba(227,179,65,.3)}
+.rowbtn{background:none;border:none;color:var(--dim2);padding:3px 6px;border-radius:5px;font-size:13px}
+.rowbtn:hover{color:var(--red);background:rgba(248,81,73,.1)}
+
+.empty{padding:44px 20px;text-align:center;color:var(--dim2)}
+.empty .ico{font-size:34px;opacity:.4;margin-bottom:10px}
+
+/* ---- Stats strip ---- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:14px 16px}
+.stat .k{font-family:var(--mono);font-size:10px;color:var(--dim2);text-transform:uppercase;letter-spacing:.08em}
+.stat .v{font-size:23px;font-weight:700;margin-top:3px;font-family:var(--mono);letter-spacing:-.01em}
+.stat .v small{font-size:12px;color:var(--dim);font-weight:400}
+
+.badge{font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:6px;background:var(--panel2);
+  border:1px solid var(--line2);color:var(--dim)}
+.badge.ok{color:var(--accent);border-color:rgba(63,185,80,.35);background:rgba(63,185,80,.08)}
+
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--panel);border:1px solid var(--line2);border-radius:9px;padding:12px 18px;
+  font-size:13px;box-shadow:0 12px 40px rgba(0,0,0,.5);transition:.25s;z-index:100;
+  display:flex;align-items:center;gap:9px;opacity:0}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.toast.err .dot{background:var(--red)}
+
+.split{display:grid;grid-template-columns:380px 1fr;gap:22px;flex:1;align-items:start}
+@media(max-width:960px){.split{grid-template-columns:1fr}}
+
+/* prediction box */
+.predict{background:linear-gradient(135deg,#12251a,#0d1117);border:1px solid rgba(63,185,80,.3);
+  border-radius:10px;padding:16px;margin-top:14px}
+.predict .ph{font-family:var(--mono);font-size:10px;color:var(--accent);text-transform:uppercase;
+  letter-spacing:.1em;margin-bottom:10px;font-weight:600;display:flex;justify-content:space-between}
+.predict .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.predict .pv{font-family:var(--mono);font-size:20px;font-weight:700}
+.predict .pv small{font-size:11px;color:var(--dim);font-weight:400}
+.predict .pk{font-size:11px;color:var(--dim);margin-top:1px}
+.confbar{height:4px;border-radius:2px;background:var(--line);margin-top:12px;overflow:hidden}
+.confbar i{display:block;height:100%;background:var(--accent);border-radius:2px}
+.methodnote{font-size:11px;color:var(--dim2);margin-top:9px;line-height:1.45}
+
+canvas.chart{width:100%;display:block}
+.viewer{width:100%;height:230px;background:var(--panel2);border-radius:8px;border:1px solid var(--line);
+  margin-top:14px;position:relative;overflow:hidden}
+.viewer canvas{width:100%;height:100%;display:block}
+.viewer .vhint{position:absolute;bottom:7px;right:9px;font-family:var(--mono);font-size:10px;color:var(--dim2)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <span class="mark">3D</span>
+    <span>3D4U Print-kalibratie</span>
+    <span class="sub">offline · v1</span>
+  </div>
+  <div class="grow"></div>
+  <div class="hstat"><span>Metingen:</span><b id="hCount">0</b></div>
+  <div class="hstat"><span>Materialen:</span><b id="hMats">0</b></div>
+  <button class="btn ghost sm" onclick="exportJSON()">⬇ Backup</button>
+  <button class="btn ghost sm" onclick="document.getElementById('importFile').click()">⬆ Import</button>
+  <input type="file" id="importFile" accept=".json" hidden onchange="importJSON(event)">
+</header>
+
+<nav class="tabs">
+  <button class="active" data-tab="measure">Meting toevoegen</button>
+  <button data-tab="predict">Voorspellen</button>
+  <button data-tab="data">Database</button>
+</nav>
+
+<main>
+  <!-- ============ MEASURE ============ -->
+  <section class="view active" id="view-measure">
+    <div class="split">
+      <div>
+        <div class="panel">
+          <div class="panel-h"><span>Model inladen</span><span class="eyebrow">stap 1</span></div>
+          <div class="panel-b">
+            <div class="drop" id="drop">
+              <div class="ico">◈</div>
+              <h3>Sleep een 3D-bestand hierheen</h3>
+              <p>of klik om te bladeren</p>
+              <div class="fmts">STL · OBJ · 3MF</div>
+            </div>
+            <input type="file" id="fileInput" accept=".stl,.obj,.3mf" hidden>
+            <div class="viewer" id="viewerWrap" style="display:none">
+              <canvas id="viewer"></canvas>
+              <div class="vhint">sleep om te draaien</div>
+            </div>
+            <div class="readout" id="readout" style="display:none">
+              <div class="cell"><div class="k">Volume</div><div class="v" id="rVol">–</div></div>
+              <div class="cell"><div class="k">Oppervlak</div><div class="v" id="rSurf">–</div></div>
+              <div class="cell"><div class="k">Afmetingen</div><div class="v" id="rBbox" style="font-size:13px">–</div></div>
+              <div class="cell"><div class="k">Driehoeken</div><div class="v" id="rTris">–</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="panel-h"><span>Werkelijke print-data</span><span class="eyebrow">stap 2</span></div>
+          <div class="panel-b">
+            <div class="field">
+              <label>Modelnaam <span class="req">*</span></label>
+              <input class="inp" id="fName" placeholder="bv. Naamplaatje-groot">
+            </div>
+            <div class="row">
+              <div class="field">
+                <label>Materiaal <span class="req">*</span></label>
+                <input class="inp" id="fMat" list="matList" placeholder="PLA" value="PLA">
+                <datalist id="matList">
+                  <option>PLA</option><option>PLA Silk</option><option>PETG</option>
+                  <option>ABS</option><option>ASA</option><option>TPU</option><option>PLA-CF</option>
+                </datalist>
+              </div>
+              <div class="field">
+                <label>Laaghoogte (mm) <span class="req">*</span></label>
+                <input class="inp" id="fLH" list="lhList" placeholder="0.20" value="0.20">
+                <datalist id="lhList">
+                  <option>0.08</option><option>0.12</option><option>0.16</option>
+                  <option>0.20</option><option>0.24</option><option>0.28</option>
+                </datalist>
+              </div>
+            </div>
+            <div class="row3">
+              <div class="field">
+                <label>Filament (m) <span class="req">*</span></label>
+                <input class="inp" id="fFil" type="number" step="0.01" placeholder="3.30">
+              </div>
+              <div class="field">
+                <label>Printtijd <span class="req">*</span></label>
+                <input class="inp" id="fTime" placeholder="1u12m of 72">
+                <div class="hint">min of "1u30m"</div>
+              </div>
+              <div class="field">
+                <label>Per printbed</label>
+                <input class="inp" id="fPerBed" type="number" step="1" placeholder="4" value="1">
+              </div>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label>Infill (%)</label>
+                <input class="inp" id="fInfill" type="number" step="1" placeholder="15" value="15">
+              </div>
+              <div class="field">
+                <label>Wanden</label>
+                <input class="inp" id="fWalls" type="number" step="1" placeholder="2" value="2">
+              </div>
+            </div>
+            <div class="field">
+              <label>Notitie (optioneel)</label>
+              <input class="inp" id="fNote" placeholder="bv. supports aan, 0.4 nozzle">
+            </div>
+            <div style="display:flex;gap:10px;margin-top:4px">
+              <button class="btn" id="saveBtn" onclick="saveMeasurement()" disabled>＋ Meting opslaan</button>
+              <button class="btn ghost" onclick="clearForm()">Leegmaken</button>
+            </div>
+          </div>
+        </div>
+        <div class="predict" id="livePredict" style="display:none">
+          <div class="ph"><span>◇ Huidige schatting voor dit model</span><span id="lpConf"></span></div>
+          <div class="pgrid">
+            <div><div class="pv" id="lpFil">–</div><div class="pk">filament (geschat)</div></div>
+            <div><div class="pv" id="lpTime">–</div><div class="pk">printtijd (geschat)</div></div>
+          </div>
+          <div class="methodnote" id="lpNote"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PREDICT ============ -->
+  <section class="view" id="view-predict">
+    <div class="split">
+      <div>
+        <div class="panel">
+          <div class="panel-h"><span>Nieuw model schatten</span><span class="eyebrow">voorspel</span></div>
+          <div class="panel-b">
+            <div class="drop" id="drop2">
+              <div class="ico">◈</div>
+              <h3>Sleep een 3D-bestand hierheen</h3>
+              <p>of klik om te bladeren</p>
+              <div class="fmts">STL · OBJ · 3MF</div>
+            </div>
+            <input type="file" id="fileInput2" accept=".stl,.obj,.3mf" hidden>
+            <div class="readout" id="readout2" style="display:none">
+              <div class="cell"><div class="k">Volume</div><div class="v" id="p2Vol">–</div></div>
+              <div class="cell"><div class="k">Oppervlak</div><div class="v" id="p2Surf">–</div></div>
+            </div>
+            <div class="row" style="margin-top:14px">
+              <div class="field" style="margin:0">
+                <label>Materiaal</label>
+                <input class="inp" id="pMat" list="matList" value="PLA">
+              </div>
+              <div class="field" style="margin:0">
+                <label>Laaghoogte</label>
+                <input class="inp" id="pLH" list="lhList" value="0.20">
+              </div>
+            </div>
+            <button class="btn" style="margin-top:14px;width:100%" id="predBtn" onclick="runPredict()" disabled>Voorspel print</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="predict" id="predictResult" style="display:none">
+          <div class="ph"><span>◇ Voorspelling</span><span id="prConf"></span></div>
+          <div class="pgrid">
+            <div><div class="pv" id="prFil">–</div><div class="pk">filament</div></div>
+            <div><div class="pv" id="prTime">–</div><div class="pk">printtijd</div></div>
+            <div><div class="pv" id="prGram">–</div><div class="pk">gewicht (ca.)</div></div>
+            <div><div class="pv" id="prCost">–</div><div class="pk">filamentkosten</div></div>
+          </div>
+          <div class="confbar"><i id="prBar" style="width:0%"></i></div>
+          <div class="methodnote" id="prNote"></div>
+        </div>
+        <div class="panel" id="predEmpty">
+          <div class="panel-b">
+            <div class="empty">
+              <div class="ico">◇</div>
+              <p>Laad een model en kies materiaal + laaghoogte.<br>De voorspelling gebruikt je opgebouwde database.</p>
+            </div>
+          </div>
+        </div>
+        <div class="panel" style="margin-top:16px">
+          <div class="panel-h"><span>Filamentprijs</span><span class="eyebrow">€/kg</span></div>
+          <div class="panel-b">
+            <div class="field" style="margin:0">
+              <input class="inp" id="pricePerKg" type="number" step="0.5" value="20" oninput="savePrice()">
+              <div class="hint">Gebruikt voor kostenschatting (PLA ≈ 1.24 g/cm³)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DATA ============ -->
+  <section class="view" id="view-data">
+    <div style="flex:1">
+      <div class="stats" id="statStrip"></div>
+      <div class="panel">
+        <div class="panel-h">
+          <span>Kalibratie-database</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="inp sm" id="search" placeholder="zoeken…" style="width:180px;padding:6px 10px;font-size:12px" oninput="renderTable()">
+            <button class="btn danger sm" onclick="wipeAll()">Alles wissen</button>
+          </div>
+        </div>
+        <div class="panel-b">
+          <div class="tbl-wrap">
+            <table id="dataTable">
+              <thead><tr>
+                <th data-sort="name">Model <span class="arr">↕</span></th>
+                <th data-sort="material">Mat <span class="arr">↕</span></th>
+                <th data-sort="layerHeight">LH <span class="arr">↕</span></th>
+                <th data-sort="volume">Vol mm³ <span class="arr">↕</span></th>
+                <th data-sort="filament">Fil m <span class="arr">↕</span></th>
+                <th data-sort="timeMin">Tijd <span class="arr">↕</span></th>
+                <th data-sort="perBed">/bed <span class="arr">↕</span></th>
+                <th data-sort="mmPerCm3">mm/cm³ <span class="arr">↕</span></th>
+                <th data-sort="minPerCm3">min/cm³ <span class="arr">↕</span></th>
+                <th></th>
+              </tr></thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"><span class="dot"></span><span id="toastMsg"></span></div>
+
+<script>
+/* =====================================================================
+   3D4U Print-kalibratie — offline, dependency-vrij
+   Data in IndexedDB. Parsers voor STL/OBJ/3MF. Kalibratie via
+   per-materiaal/laaghoogte regressie op je eigen metingen.
+   ===================================================================== */
+
+// ---------- IndexedDB ----------
+const DB='3d4u_kalib', STORE='measurements', SETSTORE='settings';
+let db;
+function openDB(){return new Promise((res,rej)=>{
+  const r=indexedDB.open(DB,1);
+  r.onupgradeneeded=e=>{const d=e.target.result;
+    if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE,{keyPath:'id'});
+    if(!d.objectStoreNames.contains(SETSTORE))d.createObjectStore(SETSTORE,{keyPath:'k'});
+  };
+  r.onsuccess=e=>{db=e.target.result;res()};
+  r.onerror=e=>rej(e.target.error);
+});}
+function tx(store,mode='readonly'){return db.transaction(store,mode).objectStore(store);}
+function dbAll(){return new Promise(res=>{const out=[];tx(STORE).openCursor().onsuccess=e=>{
+  const c=e.target.result;if(c){out.push(c.value);c.continue()}else res(out)};});}
+function dbPut(v){return new Promise(res=>{tx(STORE,'readwrite').put(v).onsuccess=()=>res()});}
+function dbDel(id){return new Promise(res=>{tx(STORE,'readwrite').delete(id).onsuccess=()=>res()});}
+function dbClear(){return new Promise(res=>{tx(STORE,'readwrite').clear().onsuccess=()=>res()});}
+function setGet(k){return new Promise(res=>{const r=tx(SETSTORE).get(k);r.onsuccess=()=>res(r.result?r.result.v:null)});}
+function setPut(k,v){return new Promise(res=>{tx(SETSTORE,'readwrite').put({k,v}).onsuccess=()=>res()});}
+
+// ---------- Parsers ----------
+function parseBinarySTL(buf){
+  const dv=new DataView(buf);const n=dv.getUint32(80,true);const tris=[];let o=84;
+  for(let i=0;i<n;i++){o+=12;const t=[];for(let k=0;k<3;k++){
+    t.push([dv.getFloat32(o,true),dv.getFloat32(o+4,true),dv.getFloat32(o+8,true)]);o+=12;}o+=2;tris.push(t);}
+  return tris;
+}
+function parseAsciiSTL(text){
+  const tris=[];const re=/vertex\s+([-\d.eE+]+)\s+([-\d.eE+]+)\s+([-\d.eE+]+)/g;let m,cur=[];
+  while((m=re.exec(text))){cur.push([+m[1],+m[2],+m[3]]);if(cur.length===3){tris.push(cur);cur=[]}}
+  return tris;
+}
+function parseSTL(buf){
+  const u8=new Uint8Array(buf);
+  if(buf.byteLength>=84){const dv=new DataView(buf);const n=dv.getUint32(80,true);
+    if(84+n*50===buf.byteLength)return parseBinarySTL(buf);}
+  const txt=new TextDecoder().decode(u8);
+  if(txt.slice(0,200).toLowerCase().includes('solid')&&txt.toLowerCase().includes('vertex'))
+    return parseAsciiSTL(txt);
+  return parseBinarySTL(buf);
+}
+function parseOBJ(text){
+  const verts=[],tris=[];
+  for(const line of text.split('\n')){
+    const p=line.trim().split(/\s+/);
+    if(p[0]==='v')verts.push([+p[1],+p[2],+p[3]]);
+    else if(p[0]==='f'){
+      const idx=p.slice(1).map(s=>{let i=parseInt(s.split('/')[0],10);return i<0?verts.length+i:i-1;});
+      for(let k=1;k<idx.length-1;k++)tris.push([verts[idx[0]],verts[idx[k]],verts[idx[k+1]]]);
+    }
+  }
+  return tris;
+}
+// 3MF = zip met 3D/*.model (XML). Minimal zip reader (stored + deflate via DecompressionStream).
+async function parse3MF(buf){
+  const files=await unzip(buf);
+  let modelXml=null;
+  for(const [name,data] of Object.entries(files)){
+    if(name.toLowerCase().endsWith('.model')){modelXml=new TextDecoder().decode(data);break;}
+  }
+  if(!modelXml)throw new Error('Geen .model in 3MF');
+  const doc=new DOMParser().parseFromString(modelXml,'application/xml');
+  const tris=[];
+  for(const obj of doc.getElementsByTagName('object')){
+    const mesh=obj.getElementsByTagName('mesh')[0];if(!mesh)continue;
+    const vs=[];
+    const vertsNode=mesh.getElementsByTagName('vertices')[0];
+    for(const v of vertsNode.getElementsByTagName('vertex'))
+      vs.push([+v.getAttribute('x'),+v.getAttribute('y'),+v.getAttribute('z')]);
+    const trisNode=mesh.getElementsByTagName('triangles')[0];
+    if(trisNode)for(const t of trisNode.getElementsByTagName('triangle'))
+      tris.push([vs[+t.getAttribute('v1')],vs[+t.getAttribute('v2')],vs[+t.getAttribute('v3')]]);
+  }
+  return tris;
+}
+// minimal ZIP: handles stored(0) and deflate(8) using DecompressionStream
+async function unzip(buf){
+  const dv=new DataView(buf),u8=new Uint8Array(buf),files={};
+  // find End Of Central Directory
+  let eocd=-1;
+  for(let i=u8.length-22;i>=0;i--){if(dv.getUint32(i,true)===0x06054b50){eocd=i;break;}}
+  if(eocd<0)throw new Error('Ongeldig 3MF (geen zip)');
+  let cd=dv.getUint32(eocd+16,true);const count=dv.getUint16(eocd+10,true);
+  for(let i=0;i<count;i++){
+    const method=dv.getUint16(cd+10,true);
+    const csize=dv.getUint32(cd+20,true);
+    const nlen=dv.getUint16(cd+28,true),elen=dv.getUint16(cd+30,true),clen=dv.getUint16(cd+32,true);
+    const lho=dv.getUint32(cd+42,true);
+    const name=new TextDecoder().decode(u8.slice(cd+46,cd+46+nlen));
+    // local header to find data offset
+    const lnlen=dv.getUint16(lho+26,true),lelen=dv.getUint16(lho+28,true);
+    const dstart=lho+30+lnlen+lelen;
+    const comp=u8.slice(dstart,dstart+csize);
+    let data;
+    if(method===0)data=comp;
+    else if(method===8){
+      const ds=new DecompressionStream('deflate-raw');
+      const ab=await new Response(new Blob([comp]).stream().pipeThrough(ds)).arrayBuffer();
+      data=new Uint8Array(ab);
+    }else{cd+=46+nlen+elen+clen;continue;}
+    files[name]=data;
+    cd+=46+nlen+elen+clen;
+  }
+  return files;
+}
+
+async function parseFile(file){
+  const name=file.name.toLowerCase();
+  const buf=await file.arrayBuffer();
+  if(name.endsWith('.stl'))return parseSTL(buf);
+  if(name.endsWith('.obj'))return parseOBJ(new TextDecoder().decode(buf));
+  if(name.endsWith('.3mf'))return await parse3MF(buf);
+  throw new Error('Onbekend formaat');
+}
+
+// ---------- Geometrie ----------
+function meshStats(tris){
+  let vol=0,area=0,horizArea=0;
+  let min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];
+  for(const [a,b,c] of tris){
+    vol+=(a[0]*(b[1]*c[2]-b[2]*c[1])-a[1]*(b[0]*c[2]-b[2]*c[0])+a[2]*(b[0]*c[1]-b[1]*c[0]))/6;
+    const ab=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],ac=[c[0]-a[0],c[1]-a[1],c[2]-a[2]];
+    const nx=ab[1]*ac[2]-ab[2]*ac[1],ny=ab[2]*ac[0]-ab[0]*ac[2],nz=ab[0]*ac[1]-ab[1]*ac[0];
+    const nlen=Math.hypot(nx,ny,nz);const ar=0.5*nlen;
+    area+=ar;if(nlen>0)horizArea+=ar*Math.abs(nz/nlen);
+    for(const v of[a,b,c])for(let i=0;i<3;i++){if(v[i]<min[i])min[i]=v[i];if(v[i]>max[i])max[i]=v[i];}
+  }
+  return {volume:Math.abs(vol),surface:area,horizArea,vertArea:area-horizArea,
+    bbox:{x:max[0]-min[0],y:max[1]-min[1],z:max[2]-min[2]},min,max,triangles:tris.length};
+}
+
+// ---------- KALIBRATIE-ENGINE ----------
+// Kernidee: filament(m) en tijd(min) schalen sterk met modelvolume (cm³),
+// maar de verhouding hangt af van materiaal + laaghoogte + infill.
+// We leren uit je metingen twee ratio's per model:
+//   mmPerCm3  = filament_m*1000 / volume_cm3   (eigenlijk m/cm³ hier: filament_m/vol_cm3)
+//   minPerCm3 = tijd_min / volume_cm3
+// Voorspellen = mediane ratio van vergelijkbare metingen × volume nieuw model.
+// Vergelijkbaarheid in lagen: (mat+LH) > (mat) > (alles). Meer overeenkomst = hogere confidence.
+
+function derived(m){
+  const volCm3=m.volume/1000;
+  return {
+    ...m, volCm3,
+    filPerCm3: volCm3>0 ? m.filament/volCm3 : 0,      // m per cm³
+    minPerCm3: volCm3>0 ? m.timeMin/volCm3 : 0,
+  };
+}
+function median(arr){
+  if(!arr.length)return null;
+  const s=[...arr].sort((a,b)=>a-b);const n=s.length;
+  return n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2;
+}
+// Voorspel op basis van database. Retourneert null als er niets bruikbaars is.
+function predict(stats, material, layerHeight, all){
+  const volCm3=stats.volume/1000;
+  if(volCm3<=0)return null;
+  const data=all.map(derived).filter(d=>d.filPerCm3>0&&d.minPerCm3>0);
+  if(!data.length)return null;
+
+  const lhNum=parseFloat(layerHeight);
+  const matEq=d=>d.material.toLowerCase()===material.toLowerCase();
+  const lhEq=d=>Math.abs(parseFloat(d.layerHeight)-lhNum)<0.001;
+
+  // Kies beste subset met genoeg punten
+  let subset, tier, conf;
+  const t1=data.filter(d=>matEq(d)&&lhEq(d));
+  const t2=data.filter(d=>matEq(d));
+  if(t1.length>=2){subset=t1;tier='materiaal + laaghoogte';conf=Math.min(.95,.6+t1.length*.07);}
+  else if(t2.length>=2){subset=t2;tier='zelfde materiaal';conf=Math.min(.8,.45+t2.length*.05);}
+  else if(t1.length===1){subset=t1;tier='materiaal + laaghoogte (1 punt)';conf=.5;}
+  else if(t2.length===1){subset=t2;tier='zelfde materiaal (1 punt)';conf=.4;}
+  else {subset=data;tier='alle metingen';conf=Math.min(.35,.15+data.length*.02);}
+
+  const filR=median(subset.map(d=>d.filPerCm3));
+  const minR=median(subset.map(d=>d.minPerCm3));
+
+  return {
+    filament: filR*volCm3,
+    timeMin: minR*volCm3,
+    confidence: conf,
+    tier, n: subset.length, volCm3
+  };
+}
+
+// ---------- Time parsing/format ----------
+function parseTime(str){
+  str=(str+'').trim().toLowerCase();
+  if(/^\d+(\.\d+)?$/.test(str))return parseFloat(str); // pure minuten
+  let min=0;
+  const h=str.match(/(\d+(?:\.\d+)?)\s*u/);const m=str.match(/(\d+(?:\.\d+)?)\s*m/);
+  const hc=str.match(/(\d+):(\d+)/);
+  if(hc){return (+hc[1])*60+(+hc[2]);}
+  if(h)min+=parseFloat(h[1])*60;
+  if(m)min+=parseFloat(m[1]);
+  return min||NaN;
+}
+function fmtTime(min){
+  if(min==null||isNaN(min))return '–';
+  const h=Math.floor(min/60),m=Math.round(min%60);
+  return h>0?`${h}u ${m}m`:`${m}m`;
+}
+
+// ---------- App state ----------
+let currentStats=null, currentTris=null;   // measure tab
+let predictStats=null, predictTris=null;    // predict tab
+let allData=[];
+let sortKey='date', sortDir=-1;
+
+// ---------- UI helpers ----------
+function toast(msg,err){
+  const t=document.getElementById('toast');
+  document.getElementById('toastMsg').textContent=msg;
+  t.classList.toggle('err',!!err);t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2600);
+}
+function fmt(n,d=0){return n==null||isNaN(n)?'–':Number(n).toLocaleString('nl-NL',{minimumFractionDigits:d,maximumFractionDigits:d});}
+
+// ---------- Tabs ----------
+document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  document.getElementById('view-'+b.dataset.tab).classList.add('active');
+  if(b.dataset.tab==='data')renderTable();
+});
+
+// ---------- File loading (measure) ----------
+function wireDrop(dropEl,inputEl,onFile){
+  dropEl.onclick=()=>inputEl.click();
+  inputEl.onchange=e=>{if(e.target.files[0])onFile(e.target.files[0])};
+  ['dragover','dragenter'].forEach(ev=>dropEl.addEventListener(ev,e=>{e.preventDefault();dropEl.classList.add('over')}));
+  ['dragleave','drop'].forEach(ev=>dropEl.addEventListener(ev,e=>{e.preventDefault();dropEl.classList.remove('over')}));
+  dropEl.addEventListener('drop',e=>{if(e.dataTransfer.files[0])onFile(e.dataTransfer.files[0])});
+}
+
+wireDrop(document.getElementById('drop'),document.getElementById('fileInput'),async file=>{
+  try{
+    const tris=await parseFile(file);
+    if(!tris.length)throw new Error('Geen driehoeken gevonden');
+    currentTris=tris;currentStats=meshStats(tris);
+    showReadout(currentStats,'r');
+    if(!document.getElementById('fName').value)
+      document.getElementById('fName').value=file.name.replace(/\.[^.]+$/,'');
+    document.getElementById('saveBtn').disabled=false;
+    drawViewer(tris,currentStats);
+    updateLivePredict();
+    toast('Model geladen: '+file.name);
+  }catch(err){toast('Fout: '+err.message,true);console.error(err);}
+});
+
+wireDrop(document.getElementById('drop2'),document.getElementById('fileInput2'),async file=>{
+  try{
+    const tris=await parseFile(file);
+    if(!tris.length)throw new Error('Geen driehoeken gevonden');
+    predictTris=tris;predictStats=meshStats(tris);
+    showReadout(predictStats,'p2');
+    document.getElementById('predBtn').disabled=false;
+    toast('Model geladen: '+file.name);
+  }catch(err){toast('Fout: '+err.message,true);console.error(err);}
+});
+
+function showReadout(s,prefix){
+  const rw=document.getElementById(prefix==='r'?'readout':'readout2');
+  rw.style.display='grid';
+  document.getElementById(prefix+'Vol').innerHTML=fmt(s.volume,0)+' <small>mm³</small>';
+  document.getElementById(prefix+'Surf').innerHTML=fmt(s.surface,0)+' <small>mm²</small>';
+  if(prefix==='r'){
+    document.getElementById('rBbox').textContent=`${fmt(s.bbox.x,1)} × ${fmt(s.bbox.y,1)} × ${fmt(s.bbox.z,1)}`;
+    document.getElementById('rTris').textContent=fmt(s.triangles,0);
+    document.getElementById('viewerWrap').style.display='block';
+  }
+}
+
+// live schatting terwijl je invult
+function updateLivePredict(){
+  if(!currentStats)return;
+  const mat=document.getElementById('fMat').value||'PLA';
+  const lh=document.getElementById('fLH').value||'0.2';
+  const p=predict(currentStats,mat,lh,allData);
+  const box=document.getElementById('livePredict');
+  if(!p){box.style.display='none';return;}
+  box.style.display='block';
+  document.getElementById('lpFil').innerHTML=fmt(p.filament,2)+' <small>m</small>';
+  document.getElementById('lpTime').textContent=fmtTime(p.timeMin);
+  document.getElementById('lpConf').textContent=Math.round(p.confidence*100)+'% zeker';
+  document.getElementById('lpNote').textContent=
+    `Op basis van ${p.n} meting(en) — niveau: ${p.tier}. Vul je werkelijke waarden hierboven in om de schatting te verbeteren.`;
+}
+['fMat','fLH'].forEach(id=>document.getElementById(id).addEventListener('input',updateLivePredict));
+
+// ---------- Save measurement ----------
+async function saveMeasurement(){
+  if(!currentStats)return toast('Laad eerst een model',true);
+  const name=document.getElementById('fName').value.trim();
+  const material=document.getElementById('fMat').value.trim();
+  const layerHeight=document.getElementById('fLH').value.trim();
+  const filament=parseFloat(document.getElementById('fFil').value);
+  const timeMin=parseTime(document.getElementById('fTime').value);
+  const perBed=parseInt(document.getElementById('fPerBed').value)||1;
+  const infill=parseFloat(document.getElementById('fInfill').value)||null;
+  const walls=parseInt(document.getElementById('fWalls').value)||null;
+  const note=document.getElementById('fNote').value.trim();
+
+  if(!name)return toast('Modelnaam ontbreekt',true);
+  if(!material)return toast('Materiaal ontbreekt',true);
+  if(!layerHeight)return toast('Laaghoogte ontbreekt',true);
+  if(isNaN(filament)||filament<=0)return toast('Vul filament (m) in',true);
+  if(isNaN(timeMin)||timeMin<=0)return toast('Vul printtijd in',true);
+
+  const rec={
+    id:crypto.randomUUID(),date:Date.now(),name,material,layerHeight,
+    filament,timeMin,perBed,infill,walls,note,
+    volume:currentStats.volume,surface:currentStats.surface,
+    vertArea:currentStats.vertArea,horizArea:currentStats.horizArea,
+    bbox:currentStats.bbox,triangles:currentStats.triangles,
+  };
+  await dbPut(rec);
+  allData.push(rec);
+  toast('Meting opgeslagen ✓');
+  clearForm();
+  refreshCounts();
+}
+function clearForm(){
+  ['fName','fFil','fTime','fNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fPerBed').value='1';
+  document.getElementById('readout').style.display='none';
+  document.getElementById('viewerWrap').style.display='none';
+  document.getElementById('livePredict').style.display='none';
+  document.getElementById('saveBtn').disabled=true;
+  currentStats=currentTris=null;
+}
+
+// ---------- Predict tab ----------
+async function runPredict(){
+  if(!predictStats)return;
+  const mat=document.getElementById('pMat').value||'PLA';
+  const lh=document.getElementById('pLH').value||'0.2';
+  const p=predict(predictStats,mat,lh,allData);
+  const box=document.getElementById('predictResult');
+  const empty=document.getElementById('predEmpty');
+  if(!p){
+    box.style.display='none';empty.style.display='block';
+    toast('Nog geen data om mee te voorspellen — voeg eerst metingen toe',true);
+    return;
+  }
+  empty.style.display='none';box.style.display='block';
+  const price=parseFloat(document.getElementById('pricePerKg').value)||20;
+  const grams=p.volCm3*1.24* (p.filament/(p.volCm3* (median(allData.map(derived).filter(d=>d.filPerCm3>0).map(d=>d.filPerCm3))||1))||1);
+  // gewicht simpeler: uit filament_m → volume filament → gram
+  const filVolCm3=p.filament*1000*Math.PI*(1.75/2)**2/1000; // m→mm→mm³→cm³
+  const gramReal=filVolCm3*1.24;
+  const cost=gramReal/1000*price;
+
+  document.getElementById('prFil').innerHTML=fmt(p.filament,2)+' <small>m</small>';
+  document.getElementById('prTime').textContent=fmtTime(p.timeMin);
+  document.getElementById('prGram').innerHTML=fmt(gramReal,1)+' <small>g</small>';
+  document.getElementById('prCost').innerHTML='€ '+fmt(cost,2);
+  document.getElementById('prConf').textContent=Math.round(p.confidence*100)+'% zeker';
+  document.getElementById('prBar').style.width=Math.round(p.confidence*100)+'%';
+  document.getElementById('prNote').textContent=
+    `Geschat uit ${p.n} vergelijkbare meting(en) — niveau: ${p.tier}. Volume model: ${fmt(p.volCm3,1)} cm³. Hoe meer metingen met dit materiaal en deze laaghoogte, hoe nauwkeuriger.`;
+}
+async function savePrice(){await setPut('pricePerKg',parseFloat(document.getElementById('pricePerKg').value)||20);}
+
+// ---------- Data table ----------
+function renderTable(){
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  let rows=allData.map(derived);
+  if(q)rows=rows.filter(r=>(r.name+r.material+r.layerHeight+(r.note||'')).toLowerCase().includes(q));
+  rows.sort((a,b)=>{
+    let av=a[sortKey],bv=b[sortKey];
+    if(sortKey==='mmPerCm3')av=a.filPerCm3,bv=b.filPerCm3;
+    if(sortKey==='minPerCm3')av=a.minPerCm3,bv=b.minPerCm3;
+    if(typeof av==='string')return sortDir*av.localeCompare(bv);
+    return sortDir*((av||0)-(bv||0));
+  });
+  const tb=document.getElementById('tbody');
+  if(!rows.length){
+    tb.innerHTML=`<tr><td colspan="10"><div class="empty"><div class="ico">◷</div><p>Nog geen metingen. Voeg je eerste meting toe op het tabblad "Meting toevoegen".</p></div></td></tr>`;
+    renderStats();return;
+  }
+  tb.innerHTML=rows.map(r=>`<tr>
+    <td class="name" title="${esc(r.name)}">${esc(r.name)}</td>
+    <td><span class="pill mat">${esc(r.material)}</span></td>
+    <td><span class="pill lh">${esc(r.layerHeight)}</span></td>
+    <td>${fmt(r.volume,0)}</td>
+    <td>${fmt(r.filament,2)}</td>
+    <td>${fmtTime(r.timeMin)}</td>
+    <td>${r.perBed||1}</td>
+    <td>${fmt(r.filPerCm3,3)}</td>
+    <td>${fmt(r.minPerCm3,2)}</td>
+    <td><button class="rowbtn" onclick="delRec('${r.id}')" title="verwijderen">✕</button></td>
+  </tr>`).join('');
+  renderStats();
+}
+function esc(s){return (s||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));}
+
+function renderStats(){
+  const n=allData.length;
+  const mats=new Set(allData.map(d=>d.material)).size;
+  const totFil=allData.reduce((s,d)=>s+(d.filament||0),0);
+  const totTime=allData.reduce((s,d)=>s+(d.timeMin||0),0);
+  const strip=document.getElementById('statStrip');
+  strip.innerHTML=`
+    <div class="stat"><div class="k">Metingen</div><div class="v">${n}</div></div>
+    <div class="stat"><div class="k">Materialen</div><div class="v">${mats}</div></div>
+    <div class="stat"><div class="k">Totaal filament</div><div class="v">${fmt(totFil,1)} <small>m</small></div></div>
+    <div class="stat"><div class="k">Totale printtijd</div><div class="v">${fmt(totTime/60,1)} <small>u</small></div></div>`;
+}
+
+document.querySelectorAll('#dataTable th[data-sort]').forEach(th=>th.onclick=()=>{
+  const k=th.dataset.sort;
+  if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}
+  renderTable();
+});
+
+async function delRec(id){
+  await dbDel(id);
+  allData=allData.filter(d=>d.id!==id);
+  renderTable();refreshCounts();toast('Meting verwijderd');
+}
+async function wipeAll(){
+  if(!confirm('Alle metingen definitief wissen?'))return;
+  await dbClear();allData=[];renderTable();refreshCounts();toast('Database geleegd');
+}
+
+// ---------- Import/Export ----------
+function exportJSON(){
+  const blob=new Blob([JSON.stringify({app:'3d4u-kalibratie',version:1,exported:new Date().toISOString(),measurements:allData},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='3d4u-kalibratie-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+  toast('Backup gedownload');
+}
+async function importJSON(e){
+  const file=e.target.files[0];if(!file)return;
+  try{
+    const data=JSON.parse(await file.text());
+    const recs=data.measurements||data;
+    if(!Array.isArray(recs))throw new Error('Ongeldig bestand');
+    let added=0;
+    for(const r of recs){if(!r.id)r.id=crypto.randomUUID();await dbPut(r);added++;}
+    allData=await dbAll();
+    renderTable();refreshCounts();
+    toast(`${added} metingen geïmporteerd`);
+  }catch(err){toast('Import mislukt: '+err.message,true);}
+  e.target.value='';
+}
+function refreshCounts(){
+  document.getElementById('hCount').textContent=allData.length;
+  document.getElementById('hMats').textContent=new Set(allData.map(d=>d.material)).size;
+}
+
+// ---------- 3D viewer (dependency-vrij canvas wireframe) ----------
+let vState={rx:-1.1,ry:0.5,tris:null,stats:null};
+function drawViewer(tris,stats){
+  vState.tris=tris;vState.stats=stats;
+  const cv=document.getElementById('viewer');
+  const wrap=document.getElementById('viewerWrap');
+  const dpr=window.devicePixelRatio||1;
+  cv.width=wrap.clientWidth*dpr;cv.height=wrap.clientHeight*dpr;
+  renderViewer();
+}
+function renderViewer(){
+  const cv=document.getElementById('viewer');if(!vState.tris)return;
+  const ctx=cv.getContext('2d');const W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const s=vState.stats;
+  const cx=(s.min[0]+s.max[0])/2,cy=(s.min[1]+s.max[1])/2,cz=(s.min[2]+s.max[2])/2;
+  const size=Math.max(s.bbox.x,s.bbox.y,s.bbox.z)||1;
+  const scale=Math.min(W,H)/size*0.55;
+  const {rx,ry}=vState;
+  const cosX=Math.cos(rx),sinX=Math.sin(rx),cosY=Math.cos(ry),sinY=Math.sin(ry);
+  function proj(p){
+    let x=p[0]-cx,y=p[1]-cy,z=p[2]-cz;
+    let x1=x*cosY - z*sinY, z1=x*sinY + z*cosY;
+    let y1=y*cosX - z1*sinX, z2=y*sinX + z1*cosX;
+    return [W/2 + x1*scale, H/2 - y1*scale, z2];
+  }
+  // draw faces sorted by depth, flat-shaded
+  const faces=vState.tris.map(t=>{
+    const p=t.map(proj);const depth=(p[0][2]+p[1][2]+p[2][2])/3;
+    // normal for shading (screen space cross)
+    const ux=p[1][0]-p[0][0],uy=p[1][1]-p[0][1],vx=p[2][0]-p[0][0],vy=p[2][1]-p[0][1];
+    const nz=ux*vy-uy*vx;
+    return {p,depth,front:nz<0};
+  }).sort((a,b)=>a.depth-b.depth);
+  for(const f of faces){
+    if(!f.front)continue;
+    const light=0.35+0.5*Math.max(0,Math.min(1,(f.depth/size+0.5)));
+    const g=Math.round(60+light*90);
+    ctx.beginPath();
+    ctx.moveTo(f.p[0][0],f.p[0][1]);
+    ctx.lineTo(f.p[1][0],f.p[1][1]);
+    ctx.lineTo(f.p[2][0],f.p[2][1]);
+    ctx.closePath();
+    ctx.fillStyle=`rgb(${Math.round(g*0.5)},${g},${Math.round(g*0.6)})`;
+    ctx.fill();
+    ctx.strokeStyle='rgba(20,30,25,0.4)';ctx.lineWidth=0.5;ctx.stroke();
+  }
+}
+(function(){
+  const wrap=document.getElementById('viewerWrap');let drag=false,lx,ly;
+  wrap.addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY;wrap.setPointerCapture(e.pointerId)});
+  wrap.addEventListener('pointermove',e=>{if(!drag)return;
+    vState.ry+=(e.clientX-lx)*0.01;vState.rx+=(e.clientY-ly)*0.01;lx=e.clientX;ly=e.clientY;renderViewer();});
+  wrap.addEventListener('pointerup',()=>drag=false);
+})();
+
+// ---------- Init ----------
+(async function init(){
+  await openDB();
+  allData=await dbAll();
+  const price=await setGet('pricePerKg');
+  if(price)document.getElementById('pricePerKg').value=price;
+  refreshCounts();renderTable();
+})();
+</script>
+</body>
+</html>
