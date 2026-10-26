@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Acties">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f4f4f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151515" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Acties</title>
+<style>
+  :root {
+    --bg: #f4f4f1; --card: #ffffff; --text: #151515; --muted: #6b6b66; --line: #dcdcd6;
+    --accent: #1f5eff; --accent-text: #ffffff;
+    --ok: #157a3d; --ok-bg: #e3f4e9; --err: #b3261e; --err-bg: #fbe6e4; --warn: #8a5a00; --warn-bg: #fff1d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151515; --card: #222221; --text: #f2f2ee; --muted: #a2a29c; --line: #3a3a38;
+      --accent: #4d7dff; --accent-text: #ffffff;
+      --ok: #6fd795; --ok-bg: #173323; --err: #ff8a80; --err-bg: #3a1a18; --warn: #ffc65c; --warn-bg: #362a12;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font: 17px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    min-height: 100dvh; display: flex; flex-direction: column;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    -webkit-tap-highlight-color: transparent;
+  }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  h1 { font-size: 28px; margin: 0; letter-spacing: -0.02em; }
+  .icon-btn { border: 0; background: none; color: var(--muted); font-size: 26px; padding: 6px 4px 6px 16px; }
+  main { flex: 1; display: flex; flex-direction: column; gap: 12px; max-width: 640px; width: 100%; margin: 0 auto; }
+  textarea {
+    width: 100%; flex: 1; min-height: 34dvh; resize: none;
+    font: inherit; font-size: 19px; color: var(--text); background: var(--card);
+    border: 1.5px solid var(--line); border-radius: 16px; padding: 14px;
+    outline: none;
+  }
+  textarea:focus { border-color: var(--accent); }
+  .count { font-size: 13px; color: var(--muted); text-align: right; margin-top: -6px; min-height: 18px; }
+  button.big {
+    width: 100%; min-height: 64px; border: 0; border-radius: 16px;
+    font: inherit; font-size: 21px; font-weight: 650;
+    background: var(--accent); color: var(--accent-text);
+  }
+  button.big:disabled { opacity: .45; }
+  button.ghost { background: transparent; color: var(--text); border: 1.5px solid var(--line); font-weight: 550; min-height: 52px; font-size: 18px; }
+  .status { border-radius: 14px; padding: 14px 16px; display: none; }
+  .status.show { display: block; }
+  .status b { display: block; font-size: 19px; margin-bottom: 2px; }
+  .status small { display: block; font-size: 14px; opacity: .85; }
+  .status.ok { background: var(--ok-bg); color: var(--ok); }
+  .status.err { background: var(--err-bg); color: var(--err); }
+  .status.warn { background: var(--warn-bg); color: var(--warn); }
+  .status.busy { background: var(--card); color: var(--muted); border: 1.5px solid var(--line); }
+  details { color: var(--muted); font-size: 15px; }
+  summary { padding: 8px 0; cursor: pointer; }
+  ul.hist { list-style: none; padding: 0; margin: 0; }
+  ul.hist li { padding: 9px 0; border-top: 1px solid var(--line); }
+  ul.hist .meta { font-size: 13px; }
+  ul.hist .txt { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .note { font-size: 13px; color: var(--muted); text-align: center; }
+  #setup label { display: block; font-size: 15px; color: var(--muted); margin: 14px 0 6px; }
+  #setup input {
+    width: 100%; font: inherit; font-size: 16px; padding: 14px; border-radius: 12px;
+    border: 1.5px solid var(--line); background: var(--card); color: var(--text);
+  }
+  #setup p { color: var(--muted); font-size: 15px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Acties</h1>
+  <button class="icon-btn" id="btnSettings" aria-label="Instellingen">⚙︎</button>
+</header>
+
+<main id="app">
+  <textarea id="txt" placeholder="Typ of dicteer je opdracht…" autocapitalize="sentences" autocorrect="on" spellcheck="true"></textarea>
+  <div class="count" id="count"></div>
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+  <button class="big" id="btnSend" disabled>Verstuur</button>
+  <details id="histBox">
+    <summary>Laatst verzonden</summary>
+    <ul class="hist" id="hist"></ul>
+  </details>
+  <div class="note">“Verzonden” = afgeleverd bij Gmail, nog niet uitgevoerd op je werk.</div>
+</main>
+
+<section id="setup" hidden>
+  <p>Eenmalig instellen. Deze gegevens blijven alleen op deze telefoon.</p>
+  <label for="cfgUrl">Web-app-URL (eindigt op /exec)</label>
+  <input id="cfgUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
+  <label for="cfgKey">Sleutel</label>
+  <input id="cfgKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+  <div class="status" id="setupStatus" style="margin-top:16px"></div>
+  <div style="display:flex; flex-direction:column; gap:10px; margin-top:18px">
+    <button class="big" id="btnSave">Opslaan en testen</button>
+    <button class="big ghost" id="btnCancel">Terug</button>
+  </div>
+</section>
+
+<script>
+(() => {
+  // Vaste URL van het verzendscript. Leeg laten = invullen in de app.
+  const DEFAULT_URL = '';
+  const TIMEOUT_MS = 30000;
+  const LS = { cfg: 'acties.cfg', draft: 'acties.draft', pending: 'acties.pending', hist: 'acties.hist' };
+
+  const $ = id => document.getElementById(id);
+  const txt = $('txt'), btnSend = $('btnSend'), statusEl = $('status');
+
+  // ---------- opslag (veilig, ook als storage geblokkeerd is) ----------
+  const mem = {};
+  const store = {
+    get(k, d = null) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return k in mem ? mem[k] : d; } },
+    set(k, v) { mem[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    del(k) { delete mem[k]; try { localStorage.removeItem(k); } catch {} }
+  };
+
+  const cfg = () => {
+    const c = store.get(LS.cfg, {}) || {};
+    return { url: c.url || DEFAULT_URL, token: c.token || '' };
+  };
+
+  // Configuratie via link: …/#u=<url>&k=<sleutel>
+  (function readHash() {
+    if (!location.hash || location.hash.length < 3) return;
+    const p = new URLSearchParams(location.hash.slice(1));
+    if (p.get('u') || p.get('k')) {
+      const c = cfg();
+      store.set(LS.cfg, { url: p.get('u') || c.url, token: p.get('k') || c.token });
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+  })();
+
+  // ---------- hulpfuncties ----------
+  const ALPH = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const pad = n => String(n).padStart(2, '0');
+  function newId() {
+    const d = new Date();
+    const rnd = new Uint8Array(4); crypto.getRandomValues(rnd);
+    const suf = Array.from(rnd, b => ALPH[b % ALPH.length]).join('');
+    return `A-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}-${suf}`;
+  }
+  async function hash(s) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+    return Array.from(new Uint8Array(buf).slice(0, 8), b => b.toString(16).padStart(2, '0')).join('');
+  }
+  const hhmm = iso => { const d = iso ? new Date(iso) : new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function show(el, kind, title, sub) {
+    el.className = 'status show ' + kind;
+    el.innerHTML = `<b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}`;
+  }
+  function hide(el) { el.className = 'status'; el.innerHTML = ''; }
+
+  async function call(body) {
+    const { url } = cfg();
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body),
+        redirect: 'follow',
+        signal: ctrl.signal,
+        cache: 'no-store'
+      });
+      const data = await res.json();
+      return data;
+    } finally { clearTimeout(t); }
+  }
+
+  // ---------- concept bewaren ----------
+  function updateUi() {
+    const v = txt.value.trim();
+    btnSend.disabled = sending || !v;
+    $('count').textContent = v ? `${v.length} tekens` : '';
+  }
+  txt.value = store.get(LS.draft, '') || '';
+  txt.addEventListener('input', () => {
+    store.set(LS.draft, txt.value);
+    if (statusEl.classList.contains('ok')) hide(statusEl);
+    updateUi();
+  });
+
+  // ---------- geschiedenis ----------
+  function renderHist() {
+    const h = store.get(LS.hist, []) || [];
+    $('histBox').hidden = !h.length;
+    $('hist').innerHTML = h.map(x =>
+      `<li><div class="meta">${esc(new Date(x.at).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))} · #${esc(x.id)}</div><div class="txt">${esc(x.text)}</div></li>`
+    ).join('');
+  }
+  function addHist(id, text, at) {
+    const h = (store.get(LS.hist, []) || []).filter(x => x.id !== id);
+    h.unshift({ id, text: text.slice(0, 140), at: at || new Date().toISOString() });
+    store.set(LS.hist, h.slice(0, 10));
+    renderHist();
+  }
+
+  // ---------- versturen ----------
+  let sending = false;
+  async function send() {
+    const text = txt.value.trim();
+    if (!text || sending) return;
+    const c = cfg();
+    if (!c.url || !c.token) { openSetup(); return; }
+
+    let pending = store.get(LS.pending);
+    if (!pending || pending.text !== text) {
+      pending = { id: newId(), text, hash: await hash(text) };
+      store.set(LS.pending, pending);
+    }
+
+    sending = true; updateUi(); txt.blur();
+    btnSend.textContent = 'Versturen…';
+    show(statusEl, 'busy', 'Bezig met versturen…', '#' + pending.id);
+
+    try {
+      const r = await call({ token: c.token, id: pending.id, text });
+      if (r.ok && (r.status === 'sent' || (r.status === 'duplicate' && r.hash === pending.hash))) {
+        store.del(LS.pending);
+        addHist(pending.id, text, r.sentAt);
+        txt.value = ''; store.set(LS.draft, '');
+        show(statusEl, 'ok',
+          r.status === 'sent' ? '✓ Verzonden' : '✓ Was al verzonden',
+          `${hhmm(r.sentAt)} · #${pending.id}` + (r.status === 'duplicate' ? ' · niet opnieuw verstuurd' : ''));
+        if (navigator.vibrate) navigator.vibrate(30);
+      } else if (r.ok && r.status === 'duplicate') {
+        // Zelfde nummer, andere tekst: nieuw nummer en opnieuw laten bevestigen
+        store.del(LS.pending);
+        show(statusEl, 'warn', 'Nog niet verzonden', 'Een eerdere versie ging al weg. Druk opnieuw om deze tekst als nieuwe opdracht te sturen.');
+      } else if (r.status === 'unauthorized') {
+        store.del(LS.pending);
+        show(statusEl, 'err', 'Niet verzonden — sleutel klopt niet', 'Je tekst is bewaard. Controleer de sleutel via ⚙︎.');
+      } else {
+        // Script heeft geantwoord dat het mislukte: er is zeker niets verstuurd
+        if (r.status !== 'busy') store.del(LS.pending);
+        show(statusEl, 'err', 'Niet verzonden', (r.message || 'Onbekende fout') + '. Je tekst is bewaard.');
+      }
+    } catch (e) {
+      // Geen (leesbaar) antwoord: uitkomst onbekend. Nummer blijft staan, dus opnieuw proberen is veilig.
+      const offline = navigator.onLine === false;
+      show(statusEl, offline ? 'err' : 'warn',
+        offline ? 'Niet verzonden — geen verbinding' : 'Onzeker of het verzonden is',
+        offline ? 'Je tekst is bewaard. Probeer het opnieuw zodra je bereik hebt.'
+                : 'Geen antwoord ontvangen. Druk opnieuw: dubbel versturen wordt voorkomen.');
+    } finally {
+      sending = false; btnSend.textContent = 'Verstuur'; updateUi();
+    }
+  }
+  btnSend.addEventListener('click', send);
+
+  // ---------- instellingen ----------
+  function openSetup() {
+    const c = cfg();
+    $('cfgUrl').value = c.url; $('cfgKey').value = c.token;
+    hide($('setupStatus'));
+    $('app').hidden = true; $('setup').hidden = false; $('btnSettings').hidden = true;
+    $('btnCancel').hidden = !(c.url && c.token);
+  }
+  function closeSetup() { $('app').hidden = false; $('setup').hidden = true; $('btnSettings').hidden = false; }
+  $('btnSettings').addEventListener('click', openSetup);
+  $('btnCancel').addEventListener('click', closeSetup);
+  $('btnSave').addEventListener('click', async () => {
+    const url = $('cfgUrl').value.trim(), token = $('cfgKey').value.trim();
+    const ss = $('setupStatus');
+    if (!/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(url)) { show(ss, 'err', 'Controleer de URL', 'Hij begint met https://script.google.com/'); return; }
+    if (!token) { show(ss, 'err', 'Vul je sleutel in'); return; }
+    store.set(LS.cfg, { url, token });
+    show(ss, 'busy', 'Verbinding testen…');
+    try {
+      const r = await call({ token, ping: true });
+      if (r.ok) { show(ss, 'ok', '✓ Verbonden', `Nog ${r.quota} mails mogelijk vandaag`); setTimeout(closeSetup, 900); }
+      else show(ss, 'err', r.status === 'unauthorized' ? 'Sleutel klopt niet' : 'Fout', r.message || '');
+    } catch { show(ss, 'err', 'Geen verbinding met het script', 'Controleer de URL en of je bereik hebt.'); }
+  });
+
+  // ---------- start ----------
+  renderHist(); updateUi();
+  if (store.get(LS.pending) && txt.value.trim()) {
+    show(statusEl, 'warn', 'Vorige poging onbevestigd', 'Druk op Verstuur om het te controleren. Dubbel versturen wordt voorkomen.');
+  }
+  const c0 = cfg();
+  if (!c0.url || !c0.token) openSetup();
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
