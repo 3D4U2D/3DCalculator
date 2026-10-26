@@ -1,5 +1,5 @@
 // Zorgt dat de app ook zonder bereik opent (verzenden wacht dan op verbinding).
-const CACHE = 'acties-v1';
+const CACHE = 'acties-v2';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
